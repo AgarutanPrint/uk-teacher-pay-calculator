@@ -1,0 +1,939 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UK Teacher Pay Calculator — 2026/27 · AgarutanPrint</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;1,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#212a3a;
+    --paper:#f6f1e3;
+    --paper-2:#eee6d2;
+    --board:#2c3b34;
+    --board-2:#20302a;
+    --gold:#c1963c;
+    --sage:#728a72;
+    --rust:#a15139;
+    --rule:#d8cdb0;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'IBM Plex Sans', sans-serif;
+    line-height:1.5;
+  }
+  .board{
+    background:var(--board);
+    background-image:
+      radial-gradient(ellipse at 15% 20%, rgba(255,255,255,0.03) 0%, transparent 45%),
+      radial-gradient(ellipse at 85% 70%, rgba(255,255,255,0.025) 0%, transparent 50%);
+    color:var(--paper);
+    padding:2.6rem 1.5rem 3rem;
+    text-align:left;
+  }
+  .board-inner{
+    max-width:760px;
+    margin:0 auto;
+  }
+  .brand{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.78rem;
+    letter-spacing:0.04em;
+    color:#9fb0a3;
+    margin:0 0 1.4rem;
+  }
+  .brand b{ color:var(--gold); font-weight:600; }
+  .chalk-label{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.72rem;
+    letter-spacing:0.14em;
+    color:var(--gold);
+    margin:0 0 0.9rem;
+  }
+  h1{
+    font-family:'Lora', serif;
+    font-weight:600;
+    font-size:2.35rem;
+    line-height:1.18;
+    margin:0 0 0.9rem;
+    max-width:16ch;
+    color:#faf6ec;
+  }
+  .board p.lede{
+    max-width:52ch;
+    color:#d7d3c4;
+    font-size:1rem;
+    margin:0;
+  }
+  main{
+    max-width:760px;
+    margin:0 auto;
+    padding:2.75rem 1.5rem 5rem;
+  }
+  section{margin-bottom:2.75rem;}
+  h2{
+    font-family:'Lora', serif;
+    font-weight:600;
+    font-size:1.2rem;
+    margin:0 0 1.2rem;
+    padding-bottom:0.6rem;
+    border-bottom:2px solid var(--ink);
+  }
+  .field-row{
+    display:grid;
+    grid-template-columns: 1fr 1fr;
+    gap:1.1rem 1.5rem;
+    margin-bottom:1.1rem;
+  }
+  .field{display:flex; flex-direction:column; gap:0.4rem;}
+  .field.full{grid-column:1 / -1;}
+  label{
+    font-size:0.82rem;
+    font-weight:500;
+    color:#4a5164;
+  }
+  .hint{
+    font-size:0.76rem;
+    color:#7c7462;
+    margin-top:0.15rem;
+  }
+  select, input[type=number], input[type=text]{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:0.95rem;
+    padding:0.55rem 0.65rem;
+    border:1.5px solid var(--rule);
+    border-radius:2px;
+    background:#fffdf8;
+    color:var(--ink);
+  }
+  select:focus, input:focus{
+    outline:2px solid var(--gold);
+    outline-offset:1px;
+    border-color:var(--gold);
+  }
+  .radio-group, .check-group{
+    display:flex;
+    flex-wrap:wrap;
+    gap:0.5rem 1.4rem;
+    padding:0.3rem 0 0.1rem;
+  }
+  .radio-group label, .check-group label{
+    display:flex;
+    align-items:center;
+    gap:0.4rem;
+    font-weight:400;
+    font-size:0.9rem;
+    color:var(--ink);
+  }
+  input[type=radio], input[type=checkbox]{
+    accent-color:var(--gold);
+    width:16px; height:16px;
+  }
+
+  /* Ledger / payslip output */
+  .ledger{
+    background:#fffdf8;
+    border:1.5px solid var(--ink);
+  }
+  .ledger-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    padding:1.1rem 1.3rem;
+    background:var(--paper-2);
+    border-bottom:1.5px solid var(--ink);
+  }
+  .ledger-head .role{
+    font-family:'Lora', serif;
+    font-weight:600;
+    font-size:1.05rem;
+  }
+  .ledger-head .period{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.78rem;
+    color:#5a5344;
+  }
+  .ledger-row{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    padding:0.62rem 1.3rem;
+    border-bottom:1px dashed var(--rule);
+    font-size:0.95rem;
+    gap:1rem;
+  }
+  .ledger-row .lbl{ color:#3b4152; }
+  .ledger-row .sub{
+    font-size:0.76rem;
+    color:#8a8064;
+    display:block;
+    margin-top:0.1rem;
+  }
+  .ledger-row .amt{
+    font-family:'IBM Plex Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    white-space:nowrap;
+  }
+  .ledger-row.deduction .amt{ color:var(--rust); }
+  .ledger-row.deduction .amt::before{ content:"−"; }
+  .ledger-row.net{
+    background:var(--board);
+    color:#faf6ec;
+    border-bottom:none;
+    padding:1.1rem 1.3rem;
+  }
+  .ledger-row.net .lbl{ color:#faf6ec; font-weight:600; font-size:1.02rem;}
+  .ledger-row.net .amt{ font-size:1.3rem; font-weight:600; color:#f2d99b; }
+  .ledger-foot{
+    display:flex;
+    justify-content:space-between;
+    padding:0.9rem 1.3rem 1.1rem;
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.78rem;
+    color:#7c7462;
+  }
+
+  .disclaimer{
+    font-size:0.82rem;
+    color:#6c6552;
+    background:var(--paper-2);
+    border-left:3px solid var(--gold);
+    padding:0.9rem 1.1rem;
+    margin-top:1.4rem;
+  }
+  .disclaimer strong{ color:var(--ink); }
+
+  footer{
+    max-width:760px;
+    margin:0 auto;
+    padding:0 1.5rem 3.5rem;
+    font-size:0.78rem;
+    color:#8a8064;
+    display:flex;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:0.5rem;
+    border-top:1px solid var(--rule);
+    padding-top:1.2rem;
+  }
+  footer a{ color:#6c6552; }
+
+  .rates-checked{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:0.72rem;
+    color:#a89a7a;
+    margin-top:1.1rem;
+  }
+
+  .actions{
+    display:flex;
+    gap:0.7rem;
+    margin-top:1.1rem;
+    flex-wrap:wrap;
+  }
+  .btn{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:0.85rem;
+    font-weight:500;
+    padding:0.6rem 1.1rem;
+    border-radius:2px;
+    cursor:pointer;
+    border:1.5px solid var(--ink);
+    background:transparent;
+    color:var(--ink);
+  }
+  .btn:hover{ background:var(--ink); color:#faf6ec; }
+  .btn.primary{ background:var(--ink); color:#faf6ec; }
+  .btn.primary:hover{ background:var(--board-2); }
+
+  @media (max-width:600px){
+    h1{font-size:1.7rem;}
+    .field-row{grid-template-columns:1fr;}
+    .ledger-head, .ledger-row, .ledger-foot{padding-left:1rem; padding-right:1rem;}
+  }
+
+  /* ---- Print ---- */
+  @media print{
+    .board{ background:#fff !important; color:#000 !important; padding:0.5rem 0 1rem; }
+    .board p, h1{ color:#000 !important; }
+    .chalk-label, .brand{ color:#555 !important; }
+    section:not(#printSection){ display:none !important; }
+    .actions, footer{ display:none !important; }
+    .ledger{ border-color:#000; }
+    .ledger-head{ background:#eee !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .ledger-row.net{ background:#eee !important; color:#000 !important; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+    .ledger-row.net .lbl, .ledger-row.net .amt{ color:#000 !important; }
+    body{ background:#fff; }
+    .disclaimer{ background:#fff; border-left-color:#999; }
+  }
+</style>
+</head>
+<body>
+
+<div class="board">
+  <div class="board-inner">
+    <p class="brand">A calculator by <b>AgarutanPrint</b></p>
+    <p class="chalk-label">TAKE-HOME PAY · UK TEACHERS · 2026/27</p>
+    <h1>What will you actually take home?</h1>
+    <p class="lede">Pick your country, then your pay point or your own salary, and see income tax, National Insurance, pension and student loan deductions worked out for the 2026/27 tax year.</p>
+  </div>
+</div>
+
+<main>
+
+  <section>
+    <h2>Salary</h2>
+    <div class="field-row">
+      <div class="field">
+        <label for="country">Country</label>
+        <select id="country">
+          <option value="england">England</option>
+          <option value="wales">Wales</option>
+          <option value="scotland">Scotland</option>
+          <option value="ni">Northern Ireland</option>
+        </select>
+      </div>
+      <div class="field" id="regionField">
+        <label for="region">Region</label>
+        <select id="region">
+          <option value="roe">England (outside London)</option>
+          <option value="fringe">London Fringe</option>
+          <option value="outer">Outer London</option>
+          <option value="inner">Inner London</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-row" id="scaleOptionsRow">
+      <div class="field" id="payYearField">
+        <label for="payYear">Pay year</label>
+        <select id="payYear">
+          <option value="2026-27">2026-27 (from 1 September 2026)</option>
+          <option value="2025-26">2025-26 (in force until 31 August 2026)</option>
+        </select>
+      </div>
+      <div class="field" id="scaleTypeField">
+        <label for="scaleType">Pay scale</label>
+        <select id="scaleType"></select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field" id="payPointField">
+        <label for="payPoint">Pay scale point</label>
+        <select id="payPoint"></select>
+      </div>
+      <div class="field full" id="customSalaryField" style="display:none;">
+        <label for="customSalary">Annual salary (full-time equivalent), £</label>
+        <input type="number" id="customSalary" min="0" step="100" value="34069">
+        <span class="hint" id="customSalaryHint"></span>
+      </div>
+    </div>
+    <p class="hint" id="countryNote"></p>
+    <div class="field-row" style="margin-top:0.3rem;">
+      <div class="field">
+        <label for="fte">Working days per week</label>
+        <select id="fte">
+          <option value="1">5 days (full-time)</option>
+          <option value="0.9">4.5 days</option>
+          <option value="0.8">4 days</option>
+          <option value="0.6">3 days</option>
+          <option value="0.5">2.5 days (half-time)</option>
+          <option value="0.4">2 days</option>
+          <option value="0.2">1 day</option>
+        </select>
+        <span class="hint">Scales your salary before working out deductions.</span>
+      </div>
+      <div class="field">
+        <label for="tlr">Extra allowance (TLR / SEN)</label>
+        <div style="display:flex; gap:0.5rem;">
+          <input type="number" id="tlr" min="0" step="10" value="0" style="flex:1;">
+          <select id="tlrFrequency" style="width:auto;">
+            <option value="annual">£ per year</option>
+            <option value="monthly">£ per month</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Pension</h2>
+    <div class="check-group">
+      <label><input type="checkbox" id="inTPS" checked> I'm in the teachers&rsquo; pension scheme <span id="pensionSchemeName"></span></label>
+    </div>
+    <div class="field-row" style="margin-top:0.9rem;">
+      <div class="field">
+        <label for="avc">Extra AVC, % of salary</label>
+        <input type="number" id="avc" min="0" max="50" step="0.5" value="0">
+        <span class="hint">Additional voluntary contribution, taken before tax and NI.</span>
+      </div>
+      <div class="field">
+        <label for="childcare">Childcare vouchers, £ per month</label>
+        <input type="number" id="childcare" min="0" step="10" value="0">
+        <span class="hint">Salary-sacrifice scheme, taken before tax and NI.</span>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Student loan</h2>
+    <div class="field-row">
+      <div class="field">
+        <label for="loanPlan">Undergraduate plan</label>
+        <select id="loanPlan">
+          <option value="none">None</option>
+          <option value="plan1">Plan 1</option>
+          <option value="plan2" selected>Plan 2</option>
+          <option value="plan4">Plan 4 (Scotland)</option>
+          <option value="plan5">Plan 5</option>
+        </select>
+        <span class="hint">Based on where you studied, not where you work.</span>
+      </div>
+      <div class="field">
+        <label style="visibility:hidden;">Postgraduate</label>
+        <div class="check-group" style="padding-top:0.5rem;">
+          <label><input type="checkbox" id="postgradLoan"> Also repaying a postgraduate loan</label>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="printSection">
+    <h2>Your pay, monthly</h2>
+    <div class="ledger" id="ledger"></div>
+    <div class="actions">
+      <button class="btn primary" id="printBtn" type="button">Print this breakdown</button>
+      <button class="btn" id="saveBtn" type="button">Save as file</button>
+    </div>
+    <div class="disclaimer" id="disclaimerText"></div>
+    <p class="rates-checked" id="ratesChecked"></p>
+  </section>
+
+</main>
+
+<footer>
+  <span>AgarutanPrint · built with published HMRC, DfE, SPPA and NITPS rates for 2026/27.</span>
+  <span>Not financial advice.</span>
+</footer>
+
+<script>
+// ---------- 2026/27 RATES ----------
+// Tax / NI / student loan / pension rates are confirmed for the 2026/27 tax
+// year (6 April 2026 – 5 April 2027) and won't need revisiting until April
+// 2027. Pay-scale points reflect the latest confirmed or recommended awards;
+// re-check England once the DfE publishes the formal STPCD 2026 (~November
+// 2026), and Wales once the 2026/27 Welsh award is finalised.
+const RATES_LAST_CHECKED = "8 September 2026";
+
+// Personal Allowance and its £100k–£125,140 taper apply UK-wide, including Scotland.
+const PERSONAL_ALLOWANCE = 12570;
+const TAPER_START = 100000;
+
+// Income tax bands, defined as cumulative GROSS-income thresholds (the way
+// HMRC and the Scottish Government actually publish them). "to" is the top
+// of taxable income covered by that band; the band below it is taxed at the
+// previous band's rate, and so on. This must NOT be reworked into "band
+// widths chained from taxable income" — that was a bug in an earlier version
+// of this calculator that undercounted tax for anyone above about £50k.
+const RUK_TAX_BANDS = [   // England, Wales, Northern Ireland
+  { to: 50270, rate: 0.20 },
+  { to: 125140, rate: 0.40 },
+  { to: Infinity, rate: 0.45 }
+];
+const SCOTLAND_TAX_BANDS = [
+  { to: 16537, rate: 0.19 },  // Starter
+  { to: 29526, rate: 0.20 },  // Basic
+  { to: 43662, rate: 0.21 },  // Intermediate
+  { to: 75000, rate: 0.42 },  // Higher
+  { to: 125140, rate: 0.45 }, // Advanced
+  { to: Infinity, rate: 0.48 } // Top
+];
+
+const NI = {
+  primaryThreshold: 12570,
+  upperEarningsLimit: 50270,
+  mainRate: 0.08,
+  upperRate: 0.02
+};
+
+const STUDENT_LOAN = {
+  plan1: { threshold: 26900, rate: 0.09 },
+  plan2: { threshold: 29385, rate: 0.09 },
+  plan4: { threshold: 33795, rate: 0.09 },
+  plan5: { threshold: 25000, rate: 0.09 },
+  postgrad: { threshold: 21000, rate: 0.06 }
+};
+
+// Teachers' Pension Scheme (England & Wales) — official tiers from Teachers' Pensions, effective 1 April 2026
+const TPS_TIERS = [
+  { upTo: 36198.99, rate: 0.074 },
+  { upTo: 48727.99, rate: 0.089 },
+  { upTo: 57776.99, rate: 0.099 },
+  { upTo: 76572.99, rate: 0.105 },
+  { upTo: 104413.99, rate: 0.116 },
+  { upTo: Infinity, rate: 0.12 }
+];
+
+// Scottish Teachers' Pension Scheme (STPS) — official tiers from SPPA, effective 1 April 2026
+const STPS_TIERS = [
+  { upTo: 36195, rate: 0.0735 },
+  { upTo: 48724, rate: 0.0888 },
+  { upTo: 57775, rate: 0.099 },
+  { upTo: 67975, rate: 0.1061 },
+  { upTo: 92693, rate: 0.1173 },
+  { upTo: Infinity, rate: 0.1214 }
+];
+
+// Northern Ireland Teachers' Pension Scheme (NITPS) — official tiers, effective 1 April 2026
+const NITPS_TIERS = [
+  { upTo: 36198.99, rate: 0.074 },
+  { upTo: 48727.99, rate: 0.0887 },
+  { upTo: 57776.99, rate: 0.099 },
+  { upTo: 76572.99, rate: 0.1052 },
+  { upTo: 104413.99, rate: 0.1165 },
+  { upTo: Infinity, rate: 0.1206 }
+];
+
+// England pay data broken out by scale type and pay year. Qualified (Main/Upper)
+// 2026-27 figures are the STRB-recommended award; 2025-26 figures and the
+// Unqualified scale are drawn from published 2025/26 local-authority payroll
+// documents (Suffolk, Monmouthshire) cross-checked against the confirmed
+// 3.5% (5% for the UQ1 minimum) uplift used for the 2026-27 figures — the
+// same headline numbers used elsewhere in this calculator. London-region
+// Unqualified figures are estimated the same way the Main/Upper regional
+// figures are: scaled from the confirmed Rest-of-England and known regional
+// endpoints, not point-by-point official figures.
+const ENGLAND_SCALES = {
+  qualified: {
+    "2026-27": {
+      roe: { M1:34069, M2:36042, M3:38400, M4:40941, M5:43529, M6:46940, U1:49134, U2:50956, U3:52835 },
+      fringe: { M1:35186, M2:37223, M3:39659, M4:42283, M5:44956, M6:48479, U1:50522, U2:52396, U3:54328 },
+      outer: { M1:37918, M2:40108, M3:42736, M4:45575, M5:48449, M6:52241, U1:54049, U2:56054, U3:58120 },
+      inner: { M1:39294, M2:41567, M3:44283, M4:47222, M5:50205, M6:54131, U1:60147, U2:62378, U3:64684 }
+    },
+    "2025-26": {
+      roe: { M1:32916, M2:34823, M3:37101, M4:39556, M5:42057, M6:45352, U1:47472, U2:49232, U3:51048 },
+      fringe: { M1:34006, M2:35964, M3:38317, M4:40853, M5:43436, M6:46838, U1:48814, U2:50624, U3:52491 },
+      outer: { M1:36635, M2:38752, M3:41290, M4:44034, M5:46810, M6:50475, U1:52222, U2:54150, U3:56155 },
+      inner: { M1:37965, M2:40161, M3:42786, M4:45625, M5:48507, M6:52300, U1:58113, U2:60269, U3:62497 }
+    }
+  },
+  unqualified: {
+    "2026-27": {
+      roe: { UQ1:23731, UQ2:26075, UQ3:28758, UQ4:31124, UQ5:33810, UQ6:36493 },
+      fringe: { UQ1:25269, UQ2:27642, UQ3:30354, UQ4:32704, UQ5:35367, UQ6:38003 },
+      outer: { UQ1:28128, UQ2:30558, UQ3:33326, UQ4:35656, UQ5:38278, UQ6:40831 },
+      inner: { UQ1:29335, UQ2:31850, UQ3:34708, UQ4:37102, UQ5:39808, UQ6:42429 }
+    },
+    "2025-26": {
+      roe: { UQ1:22685, UQ2:25322, UQ3:27960, UQ4:30596, UQ5:33238, UQ6:35875 },
+      fringe: { UQ1:24066, UQ2:26706, UQ3:29328, UQ4:31598, UQ5:34171, UQ6:36718 },
+      outer: { UQ1:26789, UQ2:29524, UQ3:32199, UQ4:34451, UQ5:36983, UQ6:39451 },
+      inner: { UQ1:27938, UQ2:30773, UQ3:33534, UQ4:35847, UQ5:38462, UQ6:40993 }
+    }
+  },
+  // Leadership pay isn't a fixed spine any more — governing bodies set an
+  // individual range within these statutory min/max boundaries, so this
+  // calculator asks for the actual salary rather than a point.
+  leadership: {
+    "2026-27": { roe: { min: 53585, max: 148829 } },
+    "2025-26": { roe: { min: 51773, max: 143796 } }
+  }
+};
+
+// Leadership pay for Scotland and Northern Ireland, same "range not a fixed
+// point" situation as England — shown as min/max guidance with a custom
+// salary entry. Scotland: Depute Head Teacher & Head Teacher combined scale,
+// from 1 August 2026 (SNCT). Northern Ireland: Leadership scale L1-L43, most
+// recently confirmed figures — NI has not agreed a 2026/27 award as of
+// September 2026, matching the caveat already used for NI's main scale.
+const OTHER_LEADERSHIP_RANGES = {
+  scotland: { min: 67332, max: 124365 },
+  ni: { min: 47241, max: 130715 }
+};
+
+// Which "Pay scale" options each country offers. England has all three
+// because reliable Unqualified-teacher figures exist for England; Scotland
+// doesn't run a separate Unqualified track (GTCS registration is required to
+// teach at all), and reliable NI Unqualified figures weren't available, so
+// both are limited to Qualified + Leadership rather than guessing numbers.
+const SCALE_TYPE_OPTIONS = {
+  england: [
+    ['qualified', 'Qualified Teacher (Main / Upper)'],
+    ['unqualified', 'Unqualified Teacher'],
+    ['leadership', 'Leadership (Head / Deputy / Assistant Head)']
+  ],
+  scotland: [
+    ['qualified', 'Qualified Teacher (Main Grade)'],
+    ['leadership', 'Leadership (Depute Head / Head Teacher)']
+  ],
+  ni: [
+    ['qualified', 'Qualified Teacher (Main / Upper)'],
+    ['leadership', 'Leadership (Principal / Vice-Principal)']
+  ]
+};
+const COUNTRIES_WITH_SCALE_TYPES = ['england', 'scotland', 'ni'];
+
+// Pay scale points, annual, full-time.
+const COUNTRIES = {
+  england: {
+    label: "England",
+    pensionName: "(Teachers' Pension Scheme)",
+    pensionTiers: TPS_TIERS,
+    taxBands: RUK_TAX_BANDS,
+    taxLabel: "England, Wales & NI bands",
+    note: "Pay-scale points reflect the STRB-recommended 3.5% award for September 2026, but the formal STPCD 2026 document has not yet been published by the DfE.",
+    hasRegions: true,
+    regions: {
+      roe: { label: "England (outside London)", points: { M1:34069, M2:36042, M3:38400, M4:40941, M5:43529, M6:46940, U1:49134, U2:50956, U3:52835 } },
+      fringe: { label: "London Fringe", points: { M1:35186, M2:37223, M3:39659, M4:42283, M5:44956, M6:48479, U1:50522, U2:52396, U3:54328 } },
+      outer: { label: "Outer London", points: { M1:37918, M2:40108, M3:42736, M4:45575, M5:48449, M6:52241, U1:54049, U2:56054, U3:58120 } },
+      inner: { label: "Inner London", points: { M1:39294, M2:41567, M3:44283, M4:47222, M5:50205, M6:54131, U1:60147, U2:62378, U3:64684 } }
+    }
+  },
+  wales: {
+    label: "Wales",
+    pensionName: "(Teachers' Pension Scheme)",
+
+    pensionTiers: TPS_TIERS,
+    taxBands: RUK_TAX_BANDS,
+    taxLabel: "England, Wales & NI bands",
+    note: "Wales sets its own pay scale via the IWPRB. The 2026/27 award had not been finalised as of September 2026, so no pay-point dropdown is offered — enter your own salary instead. Tax and pension rates are correct for Wales.",
+    hasRegions: false,
+    customOnly: true
+  },
+  scotland: {
+    label: "Scotland",
+    pensionName: "(Scottish Teachers' Pension Scheme)",
+    pensionTiers: STPS_TIERS,
+    taxBands: SCOTLAND_TAX_BANDS,
+    taxLabel: "Scottish bands",
+    note: "Scotland uses the SNCT main grade scale (no Main/Upper Pay Range split), its own income tax bands, and the Scottish Teachers' Pension Scheme. Figures shown are from 1 August 2026.",
+    hasRegions: false,
+    points: { P0:36159, P1:43383, P2:45843, P3:48504, P4:51582, P5:54453 },
+    pointLabels: { P0:"Probationer", P1:"Point 1", P2:"Point 2", P3:"Point 3", P4:"Point 4", P5:"Point 5 (top)" }
+  },
+  ni: {
+    label: "Northern Ireland",
+    pensionName: "(NI Teachers' Pension Scheme)",
+    pensionTiers: NITPS_TIERS,
+    taxBands: RUK_TAX_BANDS,
+    taxLabel: "England, Wales & NI bands",
+    note: "Northern Ireland uses its own pay scale (from 1 September 2025; no 2026/27 award agreed yet as of September 2026) and the separate NI Teachers' Pension Scheme, but shares the same UK-wide income tax bands as England.",
+    hasRegions: false,
+    points: { M2:32916, M3:35185, M4:37809, M5:40700, M6:43830, U1:47390, U2:49104, U3:50876 }
+  }
+};
+
+// ---------- CALCULATIONS ----------
+
+// Generalised UK income tax: works for both the England/Wales/NI bands and
+// the Scottish bands, since both are published as cumulative gross-income
+// thresholds. The Personal Allowance taper (£100k–£125,140) applies to both.
+function calcIncomeTax(taxablePay, bands){
+  let allowance = PERSONAL_ALLOWANCE;
+  if (taxablePay > TAPER_START){
+    const reduction = Math.floor((taxablePay - TAPER_START) / 2);
+    allowance = Math.max(0, allowance - reduction);
+  }
+  let tax = 0;
+  let prevBound = allowance; // 0% band covers [0, allowance]
+  for (const band of bands){
+    if (taxablePay > prevBound){
+      const taxableInBand = Math.min(taxablePay, band.to) - prevBound;
+      if (taxableInBand > 0) tax += taxableInBand * band.rate;
+    }
+    prevBound = band.to;
+    if (taxablePay <= prevBound) break;
+  }
+  return { tax, allowanceUsed: allowance };
+}
+
+function calcNI(niablePay){
+  const { primaryThreshold, upperEarningsLimit, mainRate, upperRate } = NI;
+  const mainBand = Math.max(0, Math.min(niablePay, upperEarningsLimit) - primaryThreshold);
+  const upperBand = Math.max(0, niablePay - upperEarningsLimit);
+  return mainBand * mainRate + upperBand * upperRate;
+}
+
+function calcPension(grossSalary, tiers){
+  for (const tier of tiers){
+    if (grossSalary <= tier.upTo || tier.upTo === Infinity){
+      return { rate: tier.rate, amount: grossSalary * tier.rate };
+    }
+  }
+}
+
+function calcStudentLoan(grossPay, planKey, hasPostgrad){
+  let total = 0;
+  const breakdown = [];
+  if (planKey !== "none"){
+    const plan = STUDENT_LOAN[planKey];
+    const owed = Math.max(0, grossPay - plan.threshold) * plan.rate;
+    if (owed > 0){ total += owed; breakdown.push({label: planLabel(planKey), amount: owed}); }
+  }
+  if (hasPostgrad){
+    const pg = STUDENT_LOAN.postgrad;
+    const owed = Math.max(0, grossPay - pg.threshold) * pg.rate;
+    if (owed > 0){ total += owed; breakdown.push({label: "Postgraduate loan", amount: owed}); }
+  }
+  return { total, breakdown };
+}
+
+function planLabel(key){
+  return { plan1:"Student loan (Plan 1)", plan2:"Student loan (Plan 2)", plan4:"Student loan (Plan 4)", plan5:"Student loan (Plan 5)" }[key];
+}
+
+function gbp(n){
+  return n.toLocaleString('en-GB', { style:'currency', currency:'GBP', maximumFractionDigits:0 });
+}
+
+// ---------- UI WIRING ----------
+
+const countrySelect = document.getElementById('country');
+const regionField = document.getElementById('regionField');
+const regionSelect = document.getElementById('region');
+const payPointSelect = document.getElementById('payPoint');
+const payPointField = document.getElementById('payPointField');
+const customSalaryField = document.getElementById('customSalaryField');
+const customSalaryInput = document.getElementById('customSalary');
+const customSalaryHint = document.getElementById('customSalaryHint');
+const countryNote = document.getElementById('countryNote');
+const pensionSchemeName = document.getElementById('pensionSchemeName');
+const scaleOptionsRow = document.getElementById('scaleOptionsRow');
+const payYearField = document.getElementById('payYearField');
+const payYearSelect = document.getElementById('payYear');
+const scaleTypeField = document.getElementById('scaleTypeField');
+const scaleTypeSelect = document.getElementById('scaleType');
+
+function currentCountry(){
+  return COUNTRIES[countrySelect.value];
+}
+
+function isEngland(){
+  return countrySelect.value === 'england';
+}
+
+function hasScaleTypes(){
+  return COUNTRIES_WITH_SCALE_TYPES.includes(countrySelect.value);
+}
+
+// Leadership pay isn't a fixed point on a spine in any of the three nations
+// that offer it (see ENGLAND_SCALES.leadership / OTHER_LEADERSHIP_RANGES),
+// so it always uses the custom-salary input rather than a dropdown.
+function isLeadershipMode(){
+  return hasScaleTypes() && scaleTypeSelect.value === 'leadership';
+}
+
+function populateScaleTypeOptions(){
+  const options = SCALE_TYPE_OPTIONS[countrySelect.value] || [];
+  scaleTypeSelect.innerHTML = options.map(([val, label]) => `<option value="${val}">${label}</option>`).join('');
+}
+
+function currentLeadershipRange(){
+  if (isEngland()) return ENGLAND_SCALES.leadership[payYearSelect.value].roe;
+  return OTHER_LEADERSHIP_RANGES[countrySelect.value];
+}
+
+function populateRegions(){
+  const c = currentCountry();
+  regionSelect.innerHTML = Object.entries(c.regions)
+    .map(([key, r]) => `<option value="${key}">${r.label}</option>`)
+    .join('');
+}
+
+function currentPoints(){
+  const c = currentCountry();
+  if (isEngland() && !isLeadershipMode()){
+    return ENGLAND_SCALES[scaleTypeSelect.value][payYearSelect.value][regionSelect.value];
+  }
+  if (c.hasRegions) return c.regions[regionSelect.value].points;
+  return c.points;
+}
+
+function populatePayPoints(){
+  const c = currentCountry();
+
+  if (isEngland()){
+    // No regional breakdown exists yet for leadership pay — hide the region
+    // picker in that mode rather than imply we have London-specific figures.
+    regionField.style.display = isLeadershipMode() ? 'none' : 'flex';
+  }
+
+  if (isLeadershipMode()){
+    payPointField.style.display = 'none';
+    customSalaryField.style.display = 'flex';
+    const range = currentLeadershipRange();
+    const yearNote = isEngland() ? ` for ${payYearSelect.value}` : '';
+    const londonNote = isEngland() ? ' (Rest of England) — governing bodies set the exact figure within this range, and London schools pay more.' : ' — the exact figure depends on school size.';
+    customSalaryHint.textContent = `Statutory range${yearNote}: ${gbp(range.min)} to ${gbp(range.max)}${londonNote} Enter your actual salary.`;
+  } else if (c.customOnly){
+    payPointField.style.display = 'none';
+    customSalaryField.style.display = 'flex';
+    customSalaryHint.textContent = '';
+  } else {
+    payPointField.style.display = 'flex';
+    customSalaryField.style.display = 'none';
+    const points = currentPoints();
+    const labels = c.pointLabels || {};
+    payPointSelect.innerHTML = Object.entries(points)
+      .map(([point, salary]) => `<option value="${point}">${labels[point] || point} — ${gbp(salary)}</option>`)
+      .join('');
+  }
+  recalc();
+}
+
+// Runs when the COUNTRY changes: rebuilds the region list (if that country
+// has regions), the scale-type options (if that country offers them), and
+// then the pay-point list. Must not be attached to the region/scaleType
+// dropdowns' own change events — rebuilding those lists there would reset
+// the user's choice straight back to the first option.
+function onCountryChange(){
+  const c = currentCountry();
+  countryNote.textContent = c.note;
+  pensionSchemeName.textContent = c.pensionName;
+
+  scaleOptionsRow.style.display = hasScaleTypes() ? '' : 'none';
+  payYearField.style.display = isEngland() ? 'flex' : 'none';
+  if (hasScaleTypes()) populateScaleTypeOptions();
+
+  regionField.style.display = c.hasRegions ? 'flex' : 'none';
+  if (c.hasRegions) populateRegions();
+  populatePayPoints();
+}
+
+function getGrossFTESalary(){
+  const c = currentCountry();
+  if (isLeadershipMode() || c.customOnly) return Number(customSalaryInput.value) || 0;
+  const points = currentPoints();
+  return points[payPointSelect.value];
+}
+
+function recalc(){
+  const c = currentCountry();
+  const fte = Number(document.getElementById('fte').value);
+  const tlrRaw = Number(document.getElementById('tlr').value) || 0;
+  const tlrFrequency = document.getElementById('tlrFrequency').value;
+  const tlr = tlrFrequency === 'monthly' ? tlrRaw * 12 : tlrRaw;
+  const grossAnnual = getGrossFTESalary() * fte + tlr;
+
+  const inPension = document.getElementById('inTPS').checked;
+  const avcPct = Number(document.getElementById('avc').value) / 100 || 0;
+  const childcareAnnual = (Number(document.getElementById('childcare').value) || 0) * 12;
+  const loanPlan = document.getElementById('loanPlan').value;
+  const postgrad = document.getElementById('postgradLoan').checked;
+
+  // Salary-sacrifice deductions come off gross before tax & NI
+  const avcAnnual = grossAnnual * avcPct;
+  const payAfterSacrifice = Math.max(0, grossAnnual - childcareAnnual - avcAnnual);
+
+  // Pension tier is set by the actual gross annual salary rate
+  const pension = inPension ? calcPension(grossAnnual, c.pensionTiers) : { rate:0, amount:0 };
+
+  const taxablePay = Math.max(0, payAfterSacrifice - pension.amount);
+  const niablePay = payAfterSacrifice; // pension isn't NI-exempt in the standard arrangement
+
+  const { tax } = calcIncomeTax(taxablePay, c.taxBands);
+  const ni = calcNI(niablePay);
+  const loan = calcStudentLoan(grossAnnual, loanPlan, postgrad);
+
+  const netAnnual = grossAnnual - childcareAnnual - avcAnnual - pension.amount - tax - ni - loan.total;
+
+  renderLedger({
+    grossAnnual, childcareAnnual, avcAnnual, pension, taxablePay, tax, ni, loan, netAnnual, taxLabel: c.taxLabel, pensionName: c.pensionName
+  });
+}
+
+function row(label, amount, opts={}){
+  const sub = opts.sub ? `<span class="sub">${opts.sub}</span>` : '';
+  const cls = opts.deduction ? 'ledger-row deduction' : 'ledger-row';
+  return `<div class="${cls}"><div class="lbl">${label}${sub}</div><div class="amt">${gbp(Math.round(amount/12))}</div></div>`;
+}
+
+function renderLedger(r){
+  let html = `
+    <div class="ledger-head">
+      <span class="role">Monthly breakdown</span>
+      <span class="period">Annual gross ${gbp(Math.round(r.grossAnnual))}</span>
+    </div>
+    ${row('Gross pay', r.grossAnnual)}
+  `;
+
+  if (r.childcareAnnual > 0) html += row('Childcare vouchers', r.childcareAnnual, {deduction:true, sub:'Pre-tax salary sacrifice'});
+  if (r.avcAnnual > 0) html += row('AVC pension top-up', r.avcAnnual, {deduction:true, sub:'Pre-tax salary sacrifice'});
+  if (r.pension.amount > 0) html += row("Pension " + r.pensionName, r.pension.amount, {deduction:true, sub:`${(r.pension.rate*100).toFixed(2)}% member contribution tier`});
+  html += row('Income Tax', r.tax, {deduction:true, sub:r.taxLabel + ', 2026/27'});
+  html += row('National Insurance', r.ni, {deduction:true, sub:'Class 1, 2026/27 thresholds (UK-wide)'});
+  for (const item of r.loan.breakdown){
+    html += row(item.label, item.amount, {deduction:true});
+  }
+
+  html += `
+    <div class="ledger-row net">
+      <div class="lbl">Take-home pay</div>
+      <div class="amt">${gbp(Math.round(r.netAnnual/12))}</div>
+    </div>
+    <div class="ledger-foot">
+      <span>Annual take-home: ${gbp(Math.round(r.netAnnual))}</span>
+      <span>Effective deduction rate: ${(100 - (r.netAnnual/r.grossAnnual*100)).toFixed(1)}%</span>
+    </div>
+  `;
+
+  document.getElementById('ledger').innerHTML = html;
+}
+
+function renderDisclaimer(){
+  document.getElementById('disclaimerText').innerHTML =
+    `<strong>Estimate only.</strong> Tax, National Insurance, student loan and pension rates are the official figures published for 2026/27 in each of the four UK nations. Pay-scale points reflect the latest confirmed or recommended awards for that nation — see the note above for details specific to your selection. This tool doesn't account for tax code adjustments, benefits in kind, or multiple jobs.`;
+}
+
+// Bind events
+countrySelect.addEventListener('change', onCountryChange);
+regionSelect.addEventListener('change', populatePayPoints);
+scaleTypeSelect.addEventListener('change', populatePayPoints);
+payYearSelect.addEventListener('change', populatePayPoints);
+document.querySelectorAll('#payPoint, #fte, #tlr, #tlrFrequency, #inTPS, #avc, #childcare, #loanPlan, #postgradLoan, #customSalary')
+  .forEach(el => el.addEventListener('input', recalc));
+
+// Rates-checked date and static disclaimer
+document.getElementById('ratesChecked').textContent = `Rates last checked: ${RATES_LAST_CHECKED}`;
+renderDisclaimer();
+
+// Print
+document.getElementById('printBtn').addEventListener('click', () => window.print());
+
+// Save as a plain-text file (works with no server — just a browser download)
+document.getElementById('saveBtn').addEventListener('click', () => {
+  const c = currentCountry();
+  const regionPart = c.hasRegions ? ` — ${c.regions[regionSelect.value].label}` : '';
+  const pointPart = c.customOnly ? '' : ` — ${payPointSelect.value}`;
+  const ledgerText = document.getElementById('ledger').innerText;
+  const content =
+`UK Teacher Take-Home Pay — 2026/27 estimate (AgarutanPrint)
+Country: ${c.label}${regionPart}${pointPart}
+Rates last checked: ${RATES_LAST_CHECKED}
+
+${ledgerText}
+
+This is an estimate only. See the notes on the calculator page for assumptions.`;
+
+  const blob = new Blob([content], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'teacher-pay-breakdown.txt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+});
+
+onCountryChange();
+</script>
+</body>
+</html>
