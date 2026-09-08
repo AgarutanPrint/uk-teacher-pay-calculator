@@ -85,6 +85,32 @@
     padding-bottom:0.6rem;
     border-bottom:2px solid var(--ink);
   }
+  .section-head{
+    display:flex;
+    justify-content:space-between;
+    align-items:baseline;
+    margin-bottom:1.2rem;
+    padding-bottom:0.6rem;
+    border-bottom:2px solid var(--ink);
+  }
+  .section-head h2{
+    margin:0;
+    padding:0;
+    border:none;
+  }
+  .reset-link{
+    font-family:'IBM Plex Sans', sans-serif;
+    font-size:0.8rem;
+    font-weight:500;
+    color:var(--rust);
+    background:none;
+    border:none;
+    cursor:pointer;
+    padding:0;
+    text-decoration:underline;
+    text-underline-offset:2px;
+  }
+  .reset-link:hover{ color:var(--ink); }
   .field-row{
     display:grid;
     grid-template-columns: 1fr 1fr;
@@ -288,7 +314,10 @@
 <main>
 
   <section>
-    <h2>Salary</h2>
+    <div class="section-head">
+      <h2>Salary</h2>
+      <button class="reset-link" id="resetBtn" type="button">Reset form</button>
+    </div>
     <div class="field-row">
       <div class="field">
         <label for="country">Country</label>
@@ -704,12 +733,22 @@ function calcStudentLoan(grossPay, planKey, hasPostgrad){
   if (planKey !== "none"){
     const plan = STUDENT_LOAN[planKey];
     const owed = Math.max(0, grossPay - plan.threshold) * plan.rate;
-    if (owed > 0){ total += owed; breakdown.push({label: planLabel(planKey), amount: owed}); }
+    total += owed;
+    breakdown.push({
+      label: planLabel(planKey),
+      amount: owed,
+      note: owed > 0 ? null : `Below the ${gbp(plan.threshold)} repayment threshold — nothing due`
+    });
   }
   if (hasPostgrad){
     const pg = STUDENT_LOAN.postgrad;
     const owed = Math.max(0, grossPay - pg.threshold) * pg.rate;
-    if (owed > 0){ total += owed; breakdown.push({label: "Postgraduate loan", amount: owed}); }
+    total += owed;
+    breakdown.push({
+      label: "Postgraduate loan",
+      amount: owed,
+      note: owed > 0 ? null : `Below the ${gbp(pg.threshold)} repayment threshold — nothing due`
+    });
   }
   return { total, breakdown };
 }
@@ -831,7 +870,17 @@ function populatePayPoints(){
   permanentFields.style.display = isSupplyMode() ? 'none' : 'flex';
   supplyFields.style.display = isSupplyMode() ? 'flex' : 'none';
   supplyCaveatRow.style.display = isSupplyMode() ? 'flex' : 'none';
+
   if (isSupplyMode()){
+    // Daily rate is the one authoritative salary input in supply mode — hide
+    // the pay-point dropdown and the leadership/Wales custom-salary box even
+    // though the code above still populates them in the background (their
+    // values feed the daily-rate suggestion below). Without this, Leadership
+    // or Wales combined with Supply mode showed two conflicting salary boxes
+    // at once.
+    payPointField.style.display = 'none';
+    customSalaryField.style.display = 'none';
+
     // Suggest a daily rate from whatever salary is currently selected. This
     // only runs when the underlying pay point/scale/country changes (not on
     // every keystroke), so editing the daily rate by hand afterwards sticks
@@ -933,7 +982,7 @@ function renderLedger(r){
   html += row('Income Tax', r.tax, {deduction:true, sub:r.taxLabel + ', 2026/27'});
   html += row('National Insurance', r.ni, {deduction:true, sub:'Class 1, 2026/27 thresholds (UK-wide)'});
   for (const item of r.loan.breakdown){
-    html += row(item.label, item.amount, {deduction:true});
+    html += row(item.label, item.amount, {deduction: item.amount > 0, sub: item.note});
   }
 
   html += `
@@ -1098,6 +1147,46 @@ function applyURLParams(){
 
   recalc();
 }
+
+// ---------- RESET ----------
+// Puts every field back to the same state a brand-new visit starts in —
+// the same "blank slate" the person already gets by closing and reopening
+// the page, just without needing to actually reload it.
+function resetForm(){
+  countrySelect.value = 'england';
+  onCountryChange(); // rebuilds region/scaleType/payYear/payPoint lists for England
+
+  regionSelect.value = 'roe';
+  scaleTypeSelect.value = 'qualified';
+  payYearSelect.value = '2026-27';
+  employmentTypeSelect.value = 'permanent';
+  populatePayPoints(); // rebuilds the pay-point list for roe/qualified/2026-27, and resets supply/permanent field visibility
+
+  payPointSelect.value = 'M1';
+  customSalaryInput.value = 34069;
+  document.getElementById('fte').value = '1';
+  document.getElementById('tlr').value = '0';
+  document.getElementById('tlrFrequency').value = 'annual';
+  dailyRateInput.value = '175';
+  daysWorkedInput.value = '130';
+
+  document.getElementById('inTPS').checked = true;
+  document.getElementById('avc').value = '0';
+  document.getElementById('childcare').value = '0';
+  document.getElementById('loanPlan').value = 'plan2';
+  document.getElementById('postgradLoan').checked = false;
+
+  // Clear any ?country=...&payPoint=... etc from the address bar, so a
+  // shared/bookmarked link doesn't immediately re-fill the form again on
+  // the next reload — a proper fresh start, not just a visual one.
+  if (window.history && window.history.replaceState){
+    window.history.replaceState(null, '', window.location.pathname);
+  }
+
+  recalc();
+}
+
+document.getElementById('resetBtn').addEventListener('click', resetForm);
 
 onCountryChange();
 applyURLParams();
