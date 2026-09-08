@@ -334,7 +334,17 @@
       </div>
     </div>
     <p class="hint" id="countryNote"></p>
-    <div class="field-row" style="margin-top:0.3rem;">
+
+    <div class="field full" style="margin-top:0.7rem;">
+      <label for="employmentType">Employment type</label>
+      <select id="employmentType">
+        <option value="permanent">Permanent (annual salary)</option>
+        <option value="supply">Supply / daily rate</option>
+      </select>
+      <span class="hint">Supply teachers are usually paid per day worked, not a fixed annual salary.</span>
+    </div>
+
+    <div class="field-row" style="margin-top:0.3rem;" id="permanentFields">
       <div class="field">
         <label for="fte">Working days per week</label>
         <select id="fte">
@@ -357,6 +367,24 @@
             <option value="monthly">£ per month</option>
           </select>
         </div>
+      </div>
+    </div>
+
+    <div class="field-row" style="margin-top:0.3rem; display:none;" id="supplyFields">
+      <div class="field">
+        <label for="dailyRate">Daily rate, £</label>
+        <input type="number" id="dailyRate" min="0" step="5" value="175">
+        <span class="hint" id="dailyRateHint">Auto-filled from your pay point (salary ÷ 195 school days) — edit if your agency pays a different rate.</span>
+      </div>
+      <div class="field">
+        <label for="daysWorked">Days worked this school year</label>
+        <input type="number" id="daysWorked" min="0" max="195" step="1" value="130">
+        <span class="hint">Used to estimate your total income and tax for the year — not a single payslip.</span>
+      </div>
+    </div>
+    <div class="field-row" style="display:none;" id="supplyCaveatRow">
+      <div class="field full">
+        <span class="hint">If you're paid via an agency or umbrella company, individual payslips may show a different tax code (sometimes "emergency" or "Week 1/Month 1") that under- or over-taxes single payments. This estimates your likely position across the full tax year, not any one payslip.</span>
       </div>
     </div>
   </section>
@@ -409,6 +437,7 @@
     <div class="actions">
       <button class="btn primary" id="printBtn" type="button">Print this breakdown</button>
       <button class="btn" id="saveBtn" type="button">Save as file</button>
+      <button class="btn" id="copyLinkBtn" type="button">Copy link to this setup</button>
     </div>
     <div class="disclaimer" id="disclaimerText"></div>
     <p class="rates-checked" id="ratesChecked"></p>
@@ -710,6 +739,19 @@ const payYearField = document.getElementById('payYearField');
 const payYearSelect = document.getElementById('payYear');
 const scaleTypeField = document.getElementById('scaleTypeField');
 const scaleTypeSelect = document.getElementById('scaleType');
+const employmentTypeSelect = document.getElementById('employmentType');
+const permanentFields = document.getElementById('permanentFields');
+const supplyFields = document.getElementById('supplyFields');
+const supplyCaveatRow = document.getElementById('supplyCaveatRow');
+const dailyRateInput = document.getElementById('dailyRate');
+const dailyRateHint = document.getElementById('dailyRateHint');
+const daysWorkedInput = document.getElementById('daysWorked');
+
+const SCHOOL_DAYS_PER_YEAR = 195; // standard divisor used across teacher pay documents for daily/hourly rates
+
+function isSupplyMode(){
+  return employmentTypeSelect.value === 'supply';
+}
 
 function currentCountry(){
   return COUNTRIES[countrySelect.value];
@@ -785,6 +827,20 @@ function populatePayPoints(){
       .map(([point, salary]) => `<option value="${point}">${labels[point] || point} — ${gbp(salary)}</option>`)
       .join('');
   }
+
+  permanentFields.style.display = isSupplyMode() ? 'none' : 'flex';
+  supplyFields.style.display = isSupplyMode() ? 'flex' : 'none';
+  supplyCaveatRow.style.display = isSupplyMode() ? 'flex' : 'none';
+  if (isSupplyMode()){
+    // Suggest a daily rate from whatever salary is currently selected. This
+    // only runs when the underlying pay point/scale/country changes (not on
+    // every keystroke), so editing the daily rate by hand afterwards sticks
+    // until the person picks a different pay point.
+    const suggested = Math.round((getGrossFTESalary() || 0) / SCHOOL_DAYS_PER_YEAR);
+    dailyRateInput.value = suggested;
+    dailyRateHint.textContent = `Auto-filled from your pay point: ${gbp(getGrossFTESalary() || 0)} ÷ 195 school days ≈ ${gbp(suggested)}/day. Edit if your agency pays a different rate.`;
+  }
+
   recalc();
 }
 
@@ -816,11 +872,18 @@ function getGrossFTESalary(){
 
 function recalc(){
   const c = currentCountry();
-  const fte = Number(document.getElementById('fte').value);
-  const tlrRaw = Number(document.getElementById('tlr').value) || 0;
-  const tlrFrequency = document.getElementById('tlrFrequency').value;
-  const tlr = tlrFrequency === 'monthly' ? tlrRaw * 12 : tlrRaw;
-  const grossAnnual = getGrossFTESalary() * fte + tlr;
+  let grossAnnual;
+  if (isSupplyMode()){
+    const dailyRate = Number(dailyRateInput.value) || 0;
+    const daysWorked = Number(daysWorkedInput.value) || 0;
+    grossAnnual = dailyRate * daysWorked;
+  } else {
+    const fte = Number(document.getElementById('fte').value);
+    const tlrRaw = Number(document.getElementById('tlr').value) || 0;
+    const tlrFrequency = document.getElementById('tlrFrequency').value;
+    const tlr = tlrFrequency === 'monthly' ? tlrRaw * 12 : tlrRaw;
+    grossAnnual = getGrossFTESalary() * fte + tlr;
+  }
 
   const inPension = document.getElementById('inTPS').checked;
   const avcPct = Number(document.getElementById('avc').value) / 100 || 0;
@@ -897,8 +960,19 @@ countrySelect.addEventListener('change', onCountryChange);
 regionSelect.addEventListener('change', populatePayPoints);
 scaleTypeSelect.addEventListener('change', populatePayPoints);
 payYearSelect.addEventListener('change', populatePayPoints);
-document.querySelectorAll('#payPoint, #fte, #tlr, #tlrFrequency, #inTPS, #avc, #childcare, #loanPlan, #postgradLoan, #customSalary')
+document.querySelectorAll('#payPoint, #fte, #tlr, #tlrFrequency, #inTPS, #avc, #childcare, #loanPlan, #postgradLoan, #customSalary, #dailyRate, #daysWorked')
   .forEach(el => el.addEventListener('input', recalc));
+
+employmentTypeSelect.addEventListener('change', () => {
+  // Agency supply teachers usually aren't enrolled in the Teachers' Pension
+  // Scheme (only those employed directly on a school/LA payroll are), so
+  // default the pension checkbox off when switching into supply mode. This
+  // only fires on the switch itself, not on every recalc, so the person can
+  // still tick it back on if they are enrolled.
+  if (isSupplyMode()) document.getElementById('inTPS').checked = false;
+  else document.getElementById('inTPS').checked = true;
+  populatePayPoints();
+});
 
 // Rates-checked date and static disclaimer
 document.getElementById('ratesChecked').textContent = `Rates last checked: ${RATES_LAST_CHECKED}`;
@@ -933,7 +1007,100 @@ This is an estimate only. See the notes on the calculator page for assumptions.`
   URL.revokeObjectURL(url);
 });
 
+// ---------- URL PARAMETER STATE SHARING ----------
+// Lets someone bookmark or share a link that opens the calculator pre-filled
+// with a specific setup, e.g. ?country=england&scaleType=qualified&payPoint=M3
+
+function buildShareURL(){
+  const p = new URLSearchParams();
+  p.set('country', countrySelect.value);
+  const c = currentCountry();
+  if (c.hasRegions) p.set('region', regionSelect.value);
+  if (hasScaleTypes()) p.set('scaleType', scaleTypeSelect.value);
+  if (isEngland()) p.set('payYear', payYearSelect.value);
+
+  p.set('employmentType', employmentTypeSelect.value);
+  if (isSupplyMode()){
+    p.set('dailyRate', dailyRateInput.value);
+    p.set('daysWorked', daysWorkedInput.value);
+  } else {
+    if (isLeadershipMode() || c.customOnly) p.set('customSalary', customSalaryInput.value);
+    else p.set('payPoint', payPointSelect.value);
+    p.set('fte', document.getElementById('fte').value);
+    p.set('tlr', document.getElementById('tlr').value);
+    p.set('tlrFrequency', document.getElementById('tlrFrequency').value);
+  }
+
+  p.set('inTPS', document.getElementById('inTPS').checked ? '1' : '0');
+  p.set('avc', document.getElementById('avc').value);
+  p.set('childcare', document.getElementById('childcare').value);
+  p.set('loanPlan', document.getElementById('loanPlan').value);
+  p.set('postgradLoan', document.getElementById('postgradLoan').checked ? '1' : '0');
+
+  const url = new URL(window.location.href);
+  url.search = p.toString();
+  return url.toString();
+}
+
+document.getElementById('copyLinkBtn').addEventListener('click', async () => {
+  const link = buildShareURL();
+  const btn = document.getElementById('copyLinkBtn');
+  try {
+    await navigator.clipboard.writeText(link);
+    const original = btn.textContent;
+    btn.textContent = 'Link copied!';
+    setTimeout(() => { btn.textContent = original; }, 1800);
+  } catch (e) {
+    // Clipboard API can fail (older browsers, non-HTTPS) — fall back to a prompt
+    window.prompt('Copy this link:', link);
+  }
+});
+
+// Apply any settings passed in the URL on page load. Order matters: country
+// must be set (and its lists rebuilt) before region/scaleType/payYear can be
+// applied, and those must be set (and pay points rebuilt) before payPoint
+// can be applied — each stage's dropdown options depend on the stage before it.
+function applyURLParams(){
+  const p = new URLSearchParams(window.location.search);
+  if (![...p.keys()].length) return; // nothing to do, plain visit
+
+  if (p.has('country') && COUNTRIES[p.get('country')]) countrySelect.value = p.get('country');
+  onCountryChange();
+
+  const c = currentCountry();
+  if (c.hasRegions && p.has('region') && c.regions[p.get('region')]) regionSelect.value = p.get('region');
+  if (hasScaleTypes() && p.has('scaleType')){
+    const valid = SCALE_TYPE_OPTIONS[countrySelect.value].some(([v]) => v === p.get('scaleType'));
+    if (valid) scaleTypeSelect.value = p.get('scaleType');
+  }
+  if (isEngland() && p.has('payYear') && ['2026-27','2025-26'].includes(p.get('payYear'))) payYearSelect.value = p.get('payYear');
+  if (p.has('employmentType') && ['permanent','supply'].includes(p.get('employmentType'))) employmentTypeSelect.value = p.get('employmentType');
+
+  populatePayPoints(); // rebuilds pay-point list & supply/permanent field visibility from the values just set
+
+  if (isSupplyMode()){
+    if (p.has('dailyRate')) dailyRateInput.value = p.get('dailyRate');
+    if (p.has('daysWorked')) daysWorkedInput.value = p.get('daysWorked');
+  } else {
+    const c2 = currentCountry();
+    if ((isLeadershipMode() || c2.customOnly) && p.has('customSalary')) customSalaryInput.value = p.get('customSalary');
+    else if (p.has('payPoint') && [...payPointSelect.options].some(o => o.value === p.get('payPoint'))) payPointSelect.value = p.get('payPoint');
+    if (p.has('fte')) document.getElementById('fte').value = p.get('fte');
+    if (p.has('tlr')) document.getElementById('tlr').value = p.get('tlr');
+    if (p.has('tlrFrequency')) document.getElementById('tlrFrequency').value = p.get('tlrFrequency');
+  }
+
+  if (p.has('inTPS')) document.getElementById('inTPS').checked = p.get('inTPS') === '1';
+  if (p.has('avc')) document.getElementById('avc').value = p.get('avc');
+  if (p.has('childcare')) document.getElementById('childcare').value = p.get('childcare');
+  if (p.has('loanPlan')) document.getElementById('loanPlan').value = p.get('loanPlan');
+  if (p.has('postgradLoan')) document.getElementById('postgradLoan').checked = p.get('postgradLoan') === '1';
+
+  recalc();
+}
+
 onCountryChange();
+applyURLParams();
 </script>
 </body>
 </html>
