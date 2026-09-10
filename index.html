@@ -27,6 +27,24 @@
     color:var(--ink);
     font-family:'IBM Plex Sans', sans-serif;
     line-height:1.5;
+    overflow-x:hidden; /* safety net: no single element should be able to force horizontal scroll on the whole page */
+  }
+  .tlr-row{
+    display:flex;
+    gap:0.5rem;
+  }
+  .tlr-row input{
+    flex:1 1 auto;
+    min-width:0; /* flex items default to min-width:auto, which stops them shrinking below their content size — this is what was pushing the page wider than the phone screen */
+  }
+  .tlr-row select{
+    flex:0 1 auto;
+    min-width:0;
+    max-width:9rem;
+  }
+  @media (max-width:420px){
+    .tlr-row{ flex-direction:column; }
+    .tlr-row select{ max-width:none; }
   }
   .board{
     background:var(--board);
@@ -113,11 +131,11 @@
   .reset-link:hover{ color:var(--ink); }
   .field-row{
     display:grid;
-    grid-template-columns: 1fr 1fr;
+    grid-template-columns: minmax(0,1fr) minmax(0,1fr);
     gap:1.1rem 1.5rem;
     margin-bottom:1.1rem;
   }
-  .field{display:flex; flex-direction:column; gap:0.4rem;}
+  .field{display:flex; flex-direction:column; gap:0.4rem; min-width:0;}
   .field.full{grid-column:1 / -1;}
   label{
     font-size:0.82rem;
@@ -137,6 +155,9 @@
     border-radius:2px;
     background:#fffdf8;
     color:var(--ink);
+    width:100%;
+    min-width:0;
+    box-sizing:border-box;
   }
   select:focus, input:focus{
     outline:2px solid var(--gold);
@@ -280,7 +301,7 @@
 
   @media (max-width:600px){
     h1{font-size:1.7rem;}
-    .field-row{grid-template-columns:1fr;}
+    .field-row{grid-template-columns:minmax(0,1fr);}
     .ledger-head, .ledger-row, .ledger-foot{padding-left:1rem; padding-right:1rem;}
   }
 
@@ -389,9 +410,9 @@
       </div>
       <div class="field">
         <label for="tlr">Extra allowance (TLR / SEN)</label>
-        <div style="display:flex; gap:0.5rem;">
-          <input type="number" id="tlr" min="0" step="10" value="0" style="flex:1;">
-          <select id="tlrFrequency" style="width:auto;">
+        <div class="tlr-row">
+          <input type="number" id="tlr" min="0" step="10" value="0">
+          <select id="tlrFrequency">
             <option value="annual">£ per year</option>
             <option value="monthly">£ per month</option>
           </select>
@@ -427,7 +448,11 @@
       <div class="field">
         <label for="avc">Extra AVC, % of salary</label>
         <input type="number" id="avc" min="0" max="50" step="0.5" value="0">
-        <span class="hint">Additional voluntary contribution, taken before tax and NI.</span>
+        <select id="avcMode" style="margin-top:0.4rem;">
+          <option value="standard">Standard (via payroll, reduces tax only)</option>
+          <option value="sacrifice">Salary sacrifice (reduces tax & NI)</option>
+        </select>
+        <span class="hint" id="avcHint">Most AVCs get tax relief through payroll but don't reduce National Insurance — check your scheme if unsure.</span>
       </div>
       <div class="field">
         <label for="childcare">Childcare vouchers, £ per month</label>
@@ -867,9 +892,9 @@ function populatePayPoints(){
       .join('');
   }
 
-  permanentFields.style.display = isSupplyMode() ? 'none' : 'flex';
-  supplyFields.style.display = isSupplyMode() ? 'flex' : 'none';
-  supplyCaveatRow.style.display = isSupplyMode() ? 'flex' : 'none';
+  permanentFields.style.display = isSupplyMode() ? 'none' : 'grid';
+  supplyFields.style.display = isSupplyMode() ? 'grid' : 'none';
+  supplyCaveatRow.style.display = isSupplyMode() ? 'grid' : 'none';
 
   if (isSupplyMode()){
     // Daily rate is the one authoritative salary input in supply mode — hide
@@ -936,19 +961,28 @@ function recalc(){
 
   const inPension = document.getElementById('inTPS').checked;
   const avcPct = Number(document.getElementById('avc').value) / 100 || 0;
+  const avcIsSacrifice = document.getElementById('avcMode').value === 'sacrifice';
   const childcareAnnual = (Number(document.getElementById('childcare').value) || 0) * 12;
   const loanPlan = document.getElementById('loanPlan').value;
   const postgrad = document.getElementById('postgradLoan').checked;
 
-  // Salary-sacrifice deductions come off gross before tax & NI
+  // Childcare vouchers are salary sacrifice by definition (that's what the
+  // scheme is), so they always reduce both taxable and NI-able pay.
   const avcAnnual = grossAnnual * avcPct;
-  const payAfterSacrifice = Math.max(0, grossAnnual - childcareAnnual - avcAnnual);
+  const payAfterChildcare = Math.max(0, grossAnnual - childcareAnnual);
+
+  // An AVC always gets tax relief (that's the point of it), so it always
+  // reduces taxable pay. Whether it also reduces NI-able pay depends on how
+  // it's actually arranged — only true salary-sacrifice AVCs do that. A
+  // "standard" payroll AVC (net pay arrangement, no salary sacrifice) does
+  // not reduce National Insurance, same as the main pension contribution.
+  const payAfterAVC = Math.max(0, payAfterChildcare - avcAnnual);
 
   // Pension tier is set by the actual gross annual salary rate
   const pension = inPension ? calcPension(grossAnnual, c.pensionTiers) : { rate:0, amount:0 };
 
-  const taxablePay = Math.max(0, payAfterSacrifice - pension.amount);
-  const niablePay = payAfterSacrifice; // pension isn't NI-exempt in the standard arrangement
+  const taxablePay = Math.max(0, payAfterAVC - pension.amount);
+  const niablePay = avcIsSacrifice ? payAfterAVC : payAfterChildcare; // main pension contribution isn't NI-exempt either way
 
   const { tax } = calcIncomeTax(taxablePay, c.taxBands);
   const ni = calcNI(niablePay);
@@ -957,7 +991,7 @@ function recalc(){
   const netAnnual = grossAnnual - childcareAnnual - avcAnnual - pension.amount - tax - ni - loan.total;
 
   renderLedger({
-    grossAnnual, childcareAnnual, avcAnnual, pension, taxablePay, tax, ni, loan, netAnnual, taxLabel: c.taxLabel, pensionName: c.pensionName
+    grossAnnual, childcareAnnual, avcAnnual, avcIsSacrifice, pension, taxablePay, tax, ni, loan, netAnnual, taxLabel: c.taxLabel, pensionName: c.pensionName
   });
 }
 
@@ -977,7 +1011,7 @@ function renderLedger(r){
   `;
 
   if (r.childcareAnnual > 0) html += row('Childcare vouchers', r.childcareAnnual, {deduction:true, sub:'Pre-tax salary sacrifice'});
-  if (r.avcAnnual > 0) html += row('AVC pension top-up', r.avcAnnual, {deduction:true, sub:'Pre-tax salary sacrifice'});
+  if (r.avcAnnual > 0) html += row('AVC pension top-up', r.avcAnnual, {deduction:true, sub: r.avcIsSacrifice ? 'Salary sacrifice \u2014 reduces tax & NI' : 'Standard AVC \u2014 reduces tax only'});
   if (r.pension.amount > 0) html += row("Pension " + r.pensionName, r.pension.amount, {deduction:true, sub:`${(r.pension.rate*100).toFixed(2)}% member contribution tier`});
   html += row('Income Tax', r.tax, {deduction:true, sub:r.taxLabel + ', 2026/27'});
   html += row('National Insurance', r.ni, {deduction:true, sub:'Class 1, 2026/27 thresholds (UK-wide)'});
@@ -1001,7 +1035,7 @@ function renderLedger(r){
 
 function renderDisclaimer(){
   document.getElementById('disclaimerText').innerHTML =
-    `<strong>Estimate only.</strong> Tax, National Insurance, student loan and pension rates are the official figures published for 2026/27 in each of the four UK nations. Pay-scale points reflect the latest confirmed or recommended awards for that nation — see the note above for details specific to your selection. This tool doesn't account for tax code adjustments, benefits in kind, or multiple jobs.`;
+    `<strong>Estimate only.</strong> Tax, National Insurance, student loan and pension rates are the official figures published for 2026/27 in each of the four UK nations. Pay-scale points reflect the latest confirmed or recommended awards for that nation — see the note above for details specific to your selection. Every deduction here is worked out on your annual income and divided evenly across 12 months; real payslips calculate tax, NI and student loan per pay period instead, so if your earnings vary month to month — irregular hours, bonuses, or supply work — your actual monthly deductions (student loan repayments especially) may differ from this estimate. This tool also doesn't account for tax code adjustments, benefits in kind, or multiple jobs.`;
 }
 
 // Bind events
@@ -1009,7 +1043,7 @@ countrySelect.addEventListener('change', onCountryChange);
 regionSelect.addEventListener('change', populatePayPoints);
 scaleTypeSelect.addEventListener('change', populatePayPoints);
 payYearSelect.addEventListener('change', populatePayPoints);
-document.querySelectorAll('#payPoint, #fte, #tlr, #tlrFrequency, #inTPS, #avc, #childcare, #loanPlan, #postgradLoan, #customSalary, #dailyRate, #daysWorked')
+document.querySelectorAll('#payPoint, #fte, #tlr, #tlrFrequency, #inTPS, #avc, #avcMode, #childcare, #loanPlan, #postgradLoan, #customSalary, #dailyRate, #daysWorked')
   .forEach(el => el.addEventListener('input', recalc));
 
 employmentTypeSelect.addEventListener('change', () => {
@@ -1082,6 +1116,7 @@ function buildShareURL(){
 
   p.set('inTPS', document.getElementById('inTPS').checked ? '1' : '0');
   p.set('avc', document.getElementById('avc').value);
+  p.set('avcMode', document.getElementById('avcMode').value);
   p.set('childcare', document.getElementById('childcare').value);
   p.set('loanPlan', document.getElementById('loanPlan').value);
   p.set('postgradLoan', document.getElementById('postgradLoan').checked ? '1' : '0');
@@ -1141,6 +1176,7 @@ function applyURLParams(){
 
   if (p.has('inTPS')) document.getElementById('inTPS').checked = p.get('inTPS') === '1';
   if (p.has('avc')) document.getElementById('avc').value = p.get('avc');
+  if (p.has('avcMode') && ['standard','sacrifice'].includes(p.get('avcMode'))) document.getElementById('avcMode').value = p.get('avcMode');
   if (p.has('childcare')) document.getElementById('childcare').value = p.get('childcare');
   if (p.has('loanPlan')) document.getElementById('loanPlan').value = p.get('loanPlan');
   if (p.has('postgradLoan')) document.getElementById('postgradLoan').checked = p.get('postgradLoan') === '1';
@@ -1172,6 +1208,7 @@ function resetForm(){
 
   document.getElementById('inTPS').checked = true;
   document.getElementById('avc').value = '0';
+  document.getElementById('avcMode').value = 'standard';
   document.getElementById('childcare').value = '0';
   document.getElementById('loanPlan').value = 'plan2';
   document.getElementById('postgradLoan').checked = false;
